@@ -1,0 +1,27 @@
+{
+  "name": "memoru",
+  "version": "1.0.0",
+  "description": "CLI tool for GTD projects",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "CLI",
+    "GTD",
+    "Typescript"
+  ],
+  "author": "Sergio Vinagrero",
+  "license": "MIT",
+  "dependencies": {
+    "2": "^3.0.0",
+    "@types/node": "^13.1.2",
+    "chalk": "^3.0.0",
+    "signale": "^1.4.0",
+    "typescript": "^3.7.4",
+    "yargs": "^15.0.0"
+  },
+  "devDependencies": {
+    "@types/yargs": "^13.0.4"
+  }
+}
