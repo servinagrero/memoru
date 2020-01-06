@@ -20,7 +20,7 @@ const recordOptions = {
       color: 'greenBright',
       label: '',
       logLevel: 'info',
-    }
+    },
   },
 };
 
@@ -56,6 +56,7 @@ signale.config({
 });
 
 // signale.success('Hello from the Global scope');
-
-export const recordDisplayer = new signale.Signale(recordOptions);
-export const infoDisplayer = new signale.Signale(options);
+export namespace Renderer {
+  export const recordDisplayer = new signale.Signale(recordOptions);
+  export const infoDisplayer = new signale.Signale(options);
+}
