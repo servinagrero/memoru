@@ -1,6 +1,10 @@
 <h1 align='center'>Memoru</h1>
 
-<h3 align='center'>GTD projects from the termnal</h3>
+<h3 align='center'>GTD projects from the terminal</h3>
+
+<div align="center">
+  <img alt="Capture" width="60%" src="media/capture.png"/>
+</div>
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -16,6 +20,7 @@ Options are read from the file `~/.memoru.json`
 ## Install
 
 ```bash
+git clone https://github.com/servinagrero/memoru && cd memoru
 npm install memoru
 ```
 ## Usage
@@ -28,14 +33,31 @@ memoru -C name:'My awesome task'
 More than one field can be passed at the same time
 
 ```bash
-memoru -C name:'My awesome task' desc:'My description' tags:@lazy
+memoru -C name:'My awesome task' desc:'My description' context:'Conquer the world'
 ```
+
+To display all records
+```bash
+memoru -R
+```
+
+To mark a record as DONE
+```bash
+memoru -D id
+```
+
+More than one id can be passed as `-D id id id id...`. It works with contexts and tags as well.
+
+To update a record
+```bash
+memoru -U id name:'New updated name'
+```
+
 ## References
 
-+ [GTD startguide](https://hamberg.no/gtd/)
 + Heavily inspired by [Taskbook](https://github.com/klaussinani/taskbook)
 
 ## Libraries
 
-+ [Signale](https://github.com/klaussinani/signale)
++ [Chalk](https://github.com/chalk/chalk)
 + [yargs](https://github.com/yargs/yargs)

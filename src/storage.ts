@@ -1,22 +1,22 @@
 import fs from 'fs';
-import { Record } from './types';
+import { join } from 'path';
+import os from 'os';
+import { Record, MemoruOptions } from './types';
+import { Renderer } from './display';
 
-export interface MemoruOptions {
-  showCompletedRecords: boolean;
-  clearByDeletion: boolean;
-  displayAfterOperation: boolean;
-  inboxFile: string;
-  configFile: string;
-}
+export const defaultConfig: MemoruOptions = {
+  showCompletedRecords: true,
+  clearByDeletion: false,
+  displayAfterOperation: true,
+  inboxFile: join(os.homedir(), '.inbox.json'),
+  configFile: join(os.homedir(), '.memoru.json'),
+};
 
-// Returns true if the given file exists
 const fileExists = (file: string): boolean => {
   return fs.existsSync(file);
 };
 
-// Returns the list of stored records in the inbox file
-// If the inbox file does not exists, it is created and
-// an empty list is returned
+// If the inbox file does not exists, it is created and an empty list is returned
 export const readInboxFile = (inboxFile: string): Record[] => {
 
   if (fileExists(inboxFile)) {
@@ -24,19 +24,18 @@ export const readInboxFile = (inboxFile: string): Record[] => {
     return <Record[]>JSON.parse(buf.toString());
   }
 
+  Renderer.info(`Inbox file created at ${inboxFile}`);
   const inbox = fs.createWriteStream(inboxFile);
   inbox.write('[]');
   inbox.end();
   return [];
 };
 
-// Returns the options stored in the configuration file
-// If the file does not exists, it writes the default options to it
+// If the config file does not exists, it writes the default options to it
 export const readConfigFile = (defaultConfig: MemoruOptions): MemoruOptions => {
 
-  let config: MemoruOptions = defaultConfig;
-
   if (!fileExists(defaultConfig.configFile)) {
+    Renderer.info(`Config file created at ${defaultConfig.configFile}`);
     const inbox = fs.createWriteStream(defaultConfig.configFile, 'utf-8');
     inbox.write(JSON.stringify(defaultConfig, null, 2));
     inbox.end();
@@ -44,14 +43,7 @@ export const readConfigFile = (defaultConfig: MemoruOptions): MemoruOptions => {
   }
 
   const buf: string = fs.readFileSync(defaultConfig.configFile, 'utf-8');
-  config = <MemoruOptions>JSON.parse(buf);
+  const config: MemoruOptions = <MemoruOptions>JSON.parse(buf);
 
-  if (!config.inboxFile) {
-    config.inboxFile = defaultConfig.inboxFile;
-  }
-  if (!config.showCompletedRecords) {
-    config.showCompletedRecords = defaultConfig.showCompletedRecords;
-  }
-
-  return config;
+  return { ...defaultConfig, ...config };
 };
