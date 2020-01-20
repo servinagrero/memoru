@@ -49,7 +49,7 @@ const parseDate = (date: string): number => {
 };
 
 // If the difference is negative the user has passed the dueDate
-const daysUntilDueDate = (startDate: Date, args: string): Date => {
+const dueDateFromDays = (startDate: Date, args: string): Date => {
   const dueDate: Date = new Date();
   const daysOffset: number = parseDate(args);
 
@@ -158,6 +158,7 @@ export class Memoru {
     }
 
     const defaultRecord = {
+      id: this.recordList.length,
       startDate: new Date(),
       state: recordState.NEXT,
       context: 'Inbox',
@@ -165,9 +166,9 @@ export class Memoru {
     };
 
     if (record.dueDate) {
-      record.dueDate = daysUntilDueDate(defaultRecord.startDate, record.dueDate.toString());
+      record.dueDate = dueDateFromDays(defaultRecord.startDate,
+                                       record.dueDate.toString());
     }
-    record.id = this.recordList.length;
 
     return { ...defaultRecord, ...record } as Record;
   }
@@ -273,7 +274,7 @@ export class Memoru {
 
       contextRecords.forEach((r: Record) => {
         let msg: string = '';
-        msg = chalk`  {gray ${r.id}.}`;
+        msg = chalk`{gray ${r.id.toString().padStart(4)}.}`;
         switch (r.state) {
           case recordState.WIP:
           case recordState.NEXT: {
@@ -298,7 +299,8 @@ export class Memoru {
         console.log(msg);
 
         if (r.desc && r.desc !== '') {
-          console.log(`     ${chalk.italic(r.desc)}`);
+          const padding: number = r.desc.length + 1;
+          console.log(`     ${chalk.italic(r.desc.padStart(padding))}`);
         }
 
       });
@@ -316,8 +318,14 @@ export class Memoru {
       return;
     }
 
-    const createRecord: Record = fieldsAsRecord(fields);
-    this.recordList[id] = { ...this.recordList[id], ...createRecord } as Record;
+    const record: Record = fieldsAsRecord(fields);
+    this.recordList[id] = { ...this.recordList[id], ...record } as Record;
+
+    if (record.dueDate) {
+      const dueDate: Date = dueDateFromDays(new Date(),
+                                            record.dueDate.toString());
+      this.recordList[id].dueDate = dueDate;
+    }
 
     Renderer.success('Record updated successfully');
 
