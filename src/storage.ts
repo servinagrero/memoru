@@ -1,15 +1,16 @@
-import fs from 'fs';
+import * as fs from 'fs';
 import { join } from 'path';
 import os from 'os';
 import { Record, MemoruOptions } from './types';
 import { Renderer } from './display';
+
+const CONFIG_FILE: string =  join(os.homedir(), '.memoru.json');
 
 export const defaultConfig: MemoruOptions = {
   showCompletedRecords: true,
   clearByDeletion: false,
   displayAfterOperation: true,
   inboxFile: join(os.homedir(), '.inbox.json'),
-  configFile: join(os.homedir(), '.memoru.json'),
 };
 
 const fileExists = (file: string): boolean => {
@@ -24,26 +25,27 @@ export const readInboxFile = (inboxFile: string): Record[] => {
     return <Record[]>JSON.parse(buf.toString());
   }
 
+  fs.writeFileSync(inboxFile, '[]', 'utf8');
   Renderer.info(`Inbox file created at ${inboxFile}`);
-  const inbox = fs.createWriteStream(inboxFile);
-  inbox.write('[]');
-  inbox.end();
   return [];
 };
 
 // If the config file does not exists, it writes the default options to it
 export const readConfigFile = (defaultConfig: MemoruOptions): MemoruOptions => {
 
-  if (!fileExists(defaultConfig.configFile)) {
-    Renderer.info(`Config file created at ${defaultConfig.configFile}`);
-    const inbox = fs.createWriteStream(defaultConfig.configFile, 'utf-8');
-    inbox.write(JSON.stringify(defaultConfig, null, 2));
-    inbox.end();
+  if (!fileExists(CONFIG_FILE)) {
+    const data: string = JSON.stringify(defaultConfig, null, 4);
+    fs.writeFileSync(CONFIG_FILE, data, 'utf8');
+    Renderer.info(`Config file created at ${CONFIG_FILE}`);
     return defaultConfig;
   }
 
-  const buf: string = fs.readFileSync(defaultConfig.configFile, 'utf-8');
+  const buf: string = fs.readFileSync(CONFIG_FILE, 'utf-8');
   const config: MemoruOptions = <MemoruOptions>JSON.parse(buf);
+
+  if (config.inboxFile.startsWith('~')) {
+    config.inboxFile = config.inboxFile.replace('~', os.homedir());
+  }
 
   return { ...defaultConfig, ...config };
 };

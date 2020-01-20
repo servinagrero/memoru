@@ -41,15 +41,13 @@ export interface MemoruOptions {
   clearByDeletion: boolean;
   displayAfterOperation: boolean;
   inboxFile: string;
-  configFile: string;
 }
 
-// Group of all the command options passed to the command
 export interface CommandOptions {
   // Whether to remove all done records from the list
   purgeRecords?: boolean;
 
-  // Whether to delete the given records
+  // Whether to delete the given records when marked as done
   deleteRecords?: boolean;
 
   // Whether to hide the records that are done when displaying the list

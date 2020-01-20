@@ -2,10 +2,14 @@
   "name": "memoru",
   "version": "1.0.0",
   "description": "CLI tool for GTD projects",
-  "main": "main.js",
+  "main": "record.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "bin" : {
+      "memoru" : "dist/main.js"
+  },
+  "preferGlobal": true,
   "keywords": [
     "CLI",
     "GTD",
@@ -15,12 +19,12 @@
   "license": "MIT",
   "dependencies": {
     "2": "^3.0.0",
-    "@types/node": "^13.1.2",
     "chalk": "^3.0.0",
-    "typescript": "^3.7.4",
     "yargs": "^15.0.0"
   },
   "devDependencies": {
+    "@types/node": "^13.1.2",
+    "typescript": "^3.7.4",
     "@types/yargs": "^13.0.4"
   }
 }
