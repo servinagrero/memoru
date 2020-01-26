@@ -1,7 +1,5 @@
 export enum recordState {
-  NEXT = 'NEXT',
   WIP = 'WIP',
-  SOMEDAY = 'SOMEDAY',
   WAITING = 'WAITING',
   DONE = 'DONE',
 }
@@ -43,6 +41,14 @@ export interface MemoruOptions {
   inboxFile: string;
 }
 
+interface FilterOptions {
+  ids: number[];
+
+  tags: string[];
+
+  contexts: string[];
+}
+
 export interface CommandOptions {
   // Whether to remove all done records from the list
   purgeRecords?: boolean;
@@ -52,4 +58,6 @@ export interface CommandOptions {
 
   // Whether to hide the records that are done when displaying the list
   hideDoneRecords?: boolean;
+
+  filters: FilterOptions;
 }

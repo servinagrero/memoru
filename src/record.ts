@@ -6,19 +6,36 @@ import { readConfigFile, readInboxFile, defaultConfig } from './storage';
 
 // Parse the command options for each operation
 const getCommandOptions = (args: Fields): CommandOptions => {
-  const options: CommandOptions = {};
+  const options: CommandOptions = {
+    filters: { ids: [], tags: [], contexts: [] },
+  };
 
   if (!args || Object.keys(args).length === 0) {
     return options;
   }
 
-  // Only one of the options should be passed at any given time
   args.forEach((arg: any) => {
     if (typeof arg === 'string') {
-      options.hideDoneRecords = arg.search(/h(ide)?/) !== -1;
-      options.purgeRecords = arg.search(/p(urge)?/) !== -1;
-      options.deleteRecords = arg.search(/d(elete)?/) !== -1;
+      if (arg.startsWith('@')) {
+        options.filters.tags.push(arg.toUpperCase());
+
+      } else if (/h\b|ide\b/.test(arg)) {
+        options.hideDoneRecords = true;
+
+      } else if (/p\b|urge\b/.test(arg)) {
+        options.purgeRecords = true;
+
+      } else if (/d\b|delete\b/.test(arg)) {
+        options.deleteRecords = true;
+
+      } else {
+        options.filters.contexts.push(arg.toUpperCase());
+      }
+
+    } else {
+      options.filters.ids.push(arg);
     }
+
   });
 
   return options;
@@ -41,10 +58,7 @@ const parseDate = (date: string): number => {
   interface Ratios { [sel:string]: number; }
   const ratios: Ratios = { d: 1, w: 7, m: 30, y: 365 };
 
-  if (!ratios[selector]) {
-    return amount;
-  }
-
+  if (!ratios[selector]) { return amount; }
   return amount * ratios[selector];
 };
 
@@ -59,14 +73,16 @@ const dueDateFromDays = (startDate: Date, args: string): Date => {
 };
 
 const filterById = (records: Record[], ids: number[]): Record[] => {
-  return records.filter((e: Record) => {
-    return ids.includes(e.id);
+  return records.filter((record: Record) => {
+    return ids.includes(record.id);
   });
 };
 
 const filterByTag = (records: Record[], tags: string[]): Record[] => {
-  return records.filter((e: Record) => {
-    return tags.some((t: string) => e.tags.includes(t.toUpperCase()));
+  return records.filter((record: Record) => {
+    return tags.some((tag: string) => {
+      record.tags.includes(tag);
+    });
   });
 };
 
@@ -76,10 +92,11 @@ const filterByState = (records: Record[], state: recordState): Record[] => {
   });
 };
 
-const filterByContext = (records: Record[], context: string): Record[] => {
-  return records.filter((e: Record) => {
-    return e.context.toUpperCase() === context.toUpperCase();
+const filterByContext = (records: Record[], contexts: string[]): Record[] => {
+  return records.filter((record: Record) => {
+    return contexts.includes(record.context.toUpperCase());
   });
+
 };
 
 const fieldsAsRecord = (args: Fields): Record => {
@@ -98,7 +115,6 @@ export class Memoru {
   private configOptions: MemoruOptions;
 
   public constructor(configOptions?: MemoruOptions) {
-
     this.configOptions = { ...readConfigFile(defaultConfig), ...configOptions };
     this.recordList = readInboxFile(this.configOptions.inboxFile);
   }
@@ -131,16 +147,21 @@ export class Memoru {
   }
 
   // Returns false if no records are found
-  private markByContext(context: string, state: recordState): boolean {
+  private markByContext(context: string[], state: recordState): boolean {
     let found: boolean = false;
 
-    this.recordList.map((e: Record) => {
-      if (e.context.toUpperCase() === context.toUpperCase()) {
-        e.state = state;
+    this.recordList.map((record: Record) => {
+      if (context.includes(record.context.toUpperCase())) {
+        record.state = state;
         found = true;
       }
     });
     return found;
+
+      // if (e.context.toUpperCase() === context.toUpperCase()) {
+      //   e.state = state;
+      //   found = true;
+      // }
   }
 
   private reassignIndexes() {
@@ -149,12 +170,13 @@ export class Memoru {
     });
   }
 
-  public createRecord(args: Fields): Record {
+  public createRecord(args: Fields): void {
 
-    const record: Record = fieldsAsRecord(args);
+    const temp: Record = fieldsAsRecord(args);
 
-    if (!record.name) {
-      throw new Error('Record has no name');
+    if (!temp.name) {
+      Renderer.error('Record has no name');
+      return;
     }
 
     const defaultRecord = {
@@ -165,15 +187,15 @@ export class Memoru {
       tags: ['@INBOX'],
     };
 
-    if (record.dueDate) {
-      record.dueDate = dueDateFromDays(defaultRecord.startDate,
-                                       record.dueDate.toString());
+    if (temp.dueDate) {
+      temp.dueDate = dueDateFromDays(defaultRecord.startDate,
+                                     temp.dueDate.toString());
     }
 
-    return { ...defaultRecord, ...record } as Record;
+    const record: Record = { ...defaultRecord, ...temp } as Record;
+    this.recordList.push(record);
   }
 
-  // If the option clearByDeletion is set to true, the record is removed from the list
   public clearRecords(args: any[]): void {
     if (this.recordList.length === 0) {
       Renderer.info('There are no records');
@@ -188,15 +210,15 @@ export class Memoru {
       return;
     }
 
-    // FIXME: configOptions conflict with arguments passed by the user
     if (options.deleteRecords || this.configOptions.clearByDeletion) {
       let records: Record[];
-      if (typeof args[1] === 'string' && args[1].startsWith('@')) {
-        records = filterByTag(this.recordList, args);
-      } else if (typeof args[1] === 'string') {
-        records = filterByContext(this.recordList, args[1]);
+
+      if (options.filters.ids.length > 0) {
+        records = filterById(this.recordList, options.filters.ids);
+      } else if (options.filters.tags.length > 0) {
+        records = filterByTag(this.recordList, options.filters.tags);
       } else {
-        records = filterById(this.recordList, args.slice(1));
+        records = filterByContext(this.recordList, options.filters.contexts);
       }
 
       found = records.length > 0;
@@ -207,14 +229,16 @@ export class Memoru {
       }
 
     } else {
-      // TODO: Properly check for options
-      if (typeof args[0] === 'string' && args[0].startsWith('@')) {
-        found = this.markByTags(args, recordState.DONE);
-      } else if (typeof args[0] === 'string') {
-        found = this.markByContext(args[0], recordState.DONE);
+      if (options.filters.ids.length > 0) {
+        found = this.markById(options.filters.ids, recordState.DONE);
+
+      } else if (options.filters.tags.length > 0) {
+        found = this.markByTags(options.filters.tags, recordState.DONE);
+
       } else {
-        found = this.markById(args, recordState.DONE);
+        found = this.markByContext(options.filters.contexts, recordState.DONE);
       }
+
     }
 
     if (!found) {
@@ -252,7 +276,7 @@ export class Memoru {
   }
 
   // TODO: Improve this by refactoring and reducing code length
-  public displayRecords(args: Fields): void {
+  public displayRecords(args: any[]): void {
     if (this.recordList.length === 0) {
       Renderer.info('There are no records');
       return;
@@ -261,16 +285,19 @@ export class Memoru {
     const allContexts: string[] = [];
 
     this.recordList.forEach((e: Record) => {
-      allContexts.push(e.context);
+      allContexts.push(e.context.toUpperCase());
     });
     const contexts: string[] = [...new Set(allContexts)];
+    contexts.sort();
 
     contexts.forEach((context: string) => {
-      const contextRecords: Record[] = filterByContext(this.recordList, context);
+      const contextRecords = filterByContext(this.recordList, [context]);
+      contextRecords.sort();
+
       const doneRecords: number = filterByState(contextRecords, recordState.DONE).length;
 
       // TODO: Allow the user to chose colors
-      console.log(chalk`{redBright ${context}} [${doneRecords}/${contextRecords.length}]`);
+      console.log(chalk`\n{redBright ${context}} [${doneRecords}/${contextRecords.length}]`);
 
       contextRecords.forEach((r: Record) => {
         let msg: string = '';
@@ -285,7 +312,6 @@ export class Memoru {
             msg = chalk`${msg} {greenBright ${r.name}}`;
             break;
           }
-          case recordState.SOMEDAY:
           case recordState.WAITING: {
             msg = chalk`${msg} {yellow ${r.name}}`;
             break;
@@ -294,7 +320,7 @@ export class Memoru {
 
         msg = chalk`${msg} {gray ${dateDiffInDays(r.startDate, new Date())}d}`;
         if (r.dueDate) {
-          msg = chalk`${msg} {yellow ${dateDiffInDays(r.startDate, r.dueDate)}d}`;
+          msg = chalk`${msg} {yellow ${dateDiffInDays(new Date(), r.dueDate)}d}`;
         }
         console.log(msg);
 
@@ -322,7 +348,8 @@ export class Memoru {
     this.recordList[id] = { ...this.recordList[id], ...record } as Record;
 
     if (record.dueDate) {
-      const dueDate: Date = dueDateFromDays(new Date(),
+      const startDate: Date = new Date(this.recordList[id].startDate);
+      const dueDate: Date = dueDateFromDays(startDate,
                                             record.dueDate.toString());
       this.recordList[id].dueDate = dueDate;
     }
@@ -335,12 +362,7 @@ export class Memoru {
   // TODO: Arg to dump current config values
   public handleRequest(args: Fields): void {
     if (args.C) {
-      try {
-        const record: Record = this.createRecord(args.C);
-        this.recordList.push(record);
-      } catch (e) {
-        Renderer.error(e.message);
-      }
+      this.createRecord(args.C);
 
     } else if (args.R) {
       this.displayRecords(args.R);
@@ -355,7 +377,7 @@ export class Memoru {
     this.writeRecordsToInboxFile();
 
     if (this.configOptions.displayAfterOperation && !args.R) {
-      this.displayRecords({});
+      this.displayRecords([]);
     }
   }
 }
